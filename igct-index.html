@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>India Grid Carbon Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f3ee;--s:#edeae3;--s2:#e4e0d8;--border:#d4d0c8;
+  --ink:#1a1916;--ink2:#5a5750;--ink3:#9a9690;
+  --red:#c84b2f;--green:#2d7a4f;--amber:#c07820;--blue:#2255a4;
+  --mono:'DM Mono',monospace;--sans:'Sora',sans-serif;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;min-height:100vh}
+
+/* HEADER */
+.hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:0 28px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.brand{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--red)}
+.hdr-title{font-size:13px;font-weight:300;color:var(--ink2);margin-left:14px}
+.hdr-r{display:flex;align-items:center;gap:10px}
+.chip{font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:2px;border:1px solid var(--border);background:var(--s);color:var(--ink3);letter-spacing:.05em}
+.chip.warn{color:var(--amber);background:#fdf3e3;border-color:#e8d4a0}
+
+/* LAYOUT */
+.page{padding:20px 28px 48px;display:flex;flex-direction:column;gap:18px}
+.sec-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:var(--s);border:1px solid var(--border);border-radius:3px;padding:16px 18px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.kpi.red::before{background:var(--red)} .kpi.amber::before{background:var(--amber)}
+.kpi.green::before{background:var(--green)} .kpi.blue::before{background:var(--blue)}
+.kpi-label{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.kpi-value{font-family:var(--mono);font-size:28px;font-weight:500;line-height:1;letter-spacing:-.02em}
+.kpi.red .kpi-value{color:var(--red)} .kpi.amber .kpi-value{color:var(--amber)}
+.kpi.green .kpi-value{color:var(--green)} .kpi.blue .kpi-value{color:var(--blue)}
+.kpi-unit{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:5px}
+.kpi-sub{font-size:10px;color:var(--ink3);margin-top:4px}
+
+/* CARD */
+.card{background:var(--s);border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.card-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.card-meta{font-family:var(--mono);font-size:9px;color:var(--ink3)}
+.card-body{padding:14px 16px}
+
+/* GRIDS */
+.two-col{display:grid;grid-template-columns:1.6fr 1fr;gap:10px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.four-col{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+/* CHART */
+.chart-wrap{position:relative;height:200px}
+.chart-sm{position:relative;height:140px}
+
+/* MIX BARS */
+.mix-list{display:flex;flex-direction:column;gap:9px}
+.mix-item{display:flex;align-items:center;gap:8px}
+.mix-name{font-family:var(--mono);font-size:10px;color:var(--ink2);width:52px;flex-shrink:0}
+.mix-track{flex:1;height:5px;background:var(--s2);border-radius:2px;overflow:hidden}
+.mix-fill{height:100%;border-radius:2px}
+.mix-mu{font-family:var(--mono);font-size:10px;width:44px;text-align:right}
+.mix-pct{font-family:var(--mono);font-size:9px;color:var(--ink3);width:30px;text-align:right}
+
+/* DERIV TABLE */
+.deriv-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--border)}
+.deriv-row:last-child{border:none}
+.deriv-key{font-size:10px;color:var(--ink2)}
+.deriv-formula{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:1px}
+.deriv-val{font-family:var(--mono);font-size:12px;font-weight:500}
+
+/* REGION TABLE */
+.rtable{width:100%;border-collapse:collapse}
+.rtable th{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);text-align:right;padding:0 0 7px;border-bottom:1px solid var(--border);font-weight:400}
+.rtable th:first-child{text-align:left}
+.rtable td{font-family:var(--mono);font-size:10px;text-align:right;padding:5px 0;border-bottom:1px solid var(--border);color:var(--ink)}
+.rtable td:first-child{text-align:left;font-family:var(--sans);font-size:10px;color:var(--ink2)}
+.rtable tr.total td{border-top:1px solid var(--border);font-weight:500;border-bottom:none}
+
+/* FREQ BARS */
+.freq-band{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+.fb-row{display:flex;align-items:center;gap:8px}
+.fb-label{font-family:var(--mono);font-size:9px;color:var(--ink3);width:72px;flex-shrink:0}
+.fb-track{flex:1;height:4px;background:var(--s2);border-radius:2px;overflow:hidden}
+.fb-fill{height:100%;border-radius:2px}
+.fb-val{font-family:var(--mono);font-size:9px;width:38px;text-align:right}
+
+/* CROSS BORDER */
+.cb-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
+.cb-row:last-child{border:none}
+.cb-country{font-size:11px;color:var(--ink2)}
+.cb-val{font-family:var(--mono);font-size:11px}
+
+/* BOX CALLOUTS */
+.info-box{border-radius:3px;padding:11px 13px;margin-top:10px}
+.info-box-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.info-box-value{font-family:var(--mono);font-size:18px;font-weight:500}
+.info-box-note{font-size:10px;margin-top:3px;line-height:1.6}
+
+/* TABS */
+.tabs{display:flex;gap:2px}
+.tab{padding:2px 9px;font-family:var(--mono);font-size:9px;cursor:pointer;border-radius:2px;color:var(--ink3);border:1px solid transparent}
+.tab.active{color:var(--red);border-color:var(--border);background:var(--s2)}
+
+/* METHOD NOTE */
+.method{background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:3px;padding:10px 14px;font-size:10px;color:var(--ink2);line-height:1.7}
+.method strong{color:var(--amber);font-weight:500}
+
+/* FOOTER */
+.footer{border-top:1px solid var(--border);padding:12px 28px;display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:9px;color:var(--ink3);letter-spacing:.05em}
+.footer a{color:var(--ink3);text-decoration:none;border-bottom:1px solid var(--border)}
+.footer a:hover{color:var(--ink2)}
+.credit{font-size:10px;color:var(--ink3)}
+
+/* CUMULATIVE PANEL */
+.cum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.cum-box{background:var(--s);border:1px solid var(--border);border-radius:3px;padding:14px 16px}
+.cum-label{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.cum-value{font-family:var(--mono);font-size:22px;font-weight:500;line-height:1}
+.cum-unit{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:4px}
+.cum-sub{font-size:10px;color:var(--ink3);margin-top:3px}
+
+/* NDC COUNTDOWN BANNER */
+.ndc-banner{background:var(--ink);color:#f5f3ee;padding:18px 28px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px}
+.ndc-left{display:flex;flex-direction:column;gap:4px}
+.ndc-tag{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#9a9690}
+.ndc-title{font-size:13px;font-weight:400;color:#c8d0c0;line-height:1.4}
+.ndc-note{margin-top:8px;font-family:var(--mono);font-size:9px;color:#4a5a48;line-height:1.7}
+.ndc-center{display:flex;flex-direction:column;align-items:center;gap:6px}
+.ndc-sublabel{font-family:var(--mono);font-size:9px;color:#6a7868;letter-spacing:.1em;text-transform:uppercase}
+.ndc-digits{font-family:var(--mono);font-size:36px;font-weight:500;letter-spacing:.04em;color:#e8d4a0;line-height:1}
+.ndc-right{display:flex;flex-direction:column;gap:10px;text-align:right}
+.ndc-stat{display:flex;flex-direction:column}
+.ndc-stat-val{font-family:var(--mono);font-size:14px;font-weight:500;color:#c8d0c0}
+.ndc-stat-label{font-family:var(--mono);font-size:9px;color:#6a7868;letter-spacing:.06em}
+.ndc-bar-wrap{width:100%;height:4px;background:#2a3028;border-radius:2px;overflow:hidden;margin-top:6px}
+.ndc-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+
+/* FY PROGRESS BANNER */
+.fy-banner{background:var(--s);border:1px solid var(--border);border-radius:3px;padding:14px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.fy-item{padding:0 16px;border-right:1px solid var(--border)}
+.fy-item:first-child{padding-left:4px}
+.fy-item:last-child{border-right:none}
+.fy-label{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
+.fy-value{font-family:var(--mono);font-size:22px;font-weight:500;line-height:1}
+.fy-unit{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:3px}
+.fy-sub{font-size:9px;color:var(--ink3);margin-top:2px}
+
+/* QUALITY SCORECARD */
+.qs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.qs-item{background:var(--s2);border:1px solid var(--border);border-radius:2px;padding:10px 12px}
+.qs-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
+.qs-val{font-family:var(--mono);font-size:18px;font-weight:500}
+.qs-note{font-size:9px;color:var(--ink3);margin-top:3px}
+
+/* RIGVEDA */
+.rigveda{text-align:center;padding:8px 0;font-size:13px;color:var(--ink3);letter-spacing:.04em}
+.rigveda span{font-size:10px;font-family:var(--mono);letter-spacing:.08em;color:var(--ink3);opacity:.6;margin-left:10px}
+
+/* REGION SOURCEWISE */
+.rsw-region{margin-bottom:13px}
+.rsw-region:last-child{margin-bottom:0}
+.rsw-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.rsw-name{font-size:10px;color:var(--ink2)}
+.rsw-ef{font-family:var(--mono);font-size:10px}
+.rsw-stack{display:flex;height:8px;border-radius:2px;overflow:hidden;width:100%}
+.rsw-seg{height:100%;transition:width .3s}
+.rsw-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.rsw-leg{font-family:var(--mono);font-size:8px;color:var(--ink3);display:flex;align-items:center;gap:3px}
+.rsw-leg-sq{width:6px;height:6px;border-radius:1px;flex-shrink:0}
+
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.leg{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--ink2)}
+.leg-sq{width:7px;height:7px;border-radius:1px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div style="display:flex;align-items:baseline">
+    <span class="brand">IGCT</span>
+    <span class="hdr-title">India Grid Carbon Tracker</span>
+  </div>
+  <div class="hdr-r">
+    <span class="chip warn">⚠ Derived · not measured</span>
+    <span class="chip" id="dateChip">Loading…</span>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- NDC COUNTDOWN BANNER -->
+  <div class="ndc-banner">
+    <div class="ndc-left">
+      <div class="ndc-tag">India NDC Target · Grid Emission Factor</div>
+      <div class="ndc-title">Days to India's 2030 NDC deadline<br>to reduce grid EF to 0.4 tCO₂/MWh</div>
+      <div class="ndc-note">
+        Target: 0.4 tCO₂/MWh by 31 Dec 2030 · India NDC (UNFCCC)<br>
+        Current: <span id="ndcCurrentEF">—</span> · Required daily drop: <span id="ndcDropRate">—</span>
+      </div>
+    </div>
+    <div class="ndc-center">
+      <div class="ndc-sublabel">Days · Hours · Min · Sec</div>
+      <div class="ndc-digits" id="ndcDisplay">--- : -- : -- : --</div>
+      <div class="ndc-sublabel" id="ndcStatus">calculating...</div>
+      <div class="ndc-bar-wrap" style="width:220px">
+        <div class="ndc-bar-fill" id="ndcBar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="ndc-right">
+      <div class="ndc-stat">
+        <div class="ndc-stat-val" id="ndcEfGap">—</div>
+        <div class="ndc-stat-label">tCO₂/MWh still to reduce</div>
+      </div>
+      <div class="ndc-stat">
+        <div class="ndc-stat-val" id="ndcFyAvg">—</div>
+        <div class="ndc-stat-label">FY 2026-27 avg EF so far</div>
+      </div>
+      <div class="ndc-stat">
+        <div class="ndc-stat-val" id="ndcTrack">—</div>
+        <div class="ndc-stat-label">vs required trajectory</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FY PROGRESS BANNER -->
+  <div>
+    <div class="sec-label">FY 2026-27 at a glance · 1 April 2026 onwards</div>
+    <div class="fy-banner">
+      <div class="fy-item">
+        <div class="fy-label">Days tracked</div>
+        <div class="fy-value" style="color:var(--blue)" id="fy-days">—</div>
+        <div class="fy-unit">of FY 2026-27</div>
+        <div class="fy-sub" id="fy-days-sub">—</div>
+      </div>
+      <div class="fy-item">
+        <div class="fy-label">Total CO₂ emitted</div>
+        <div class="fy-value" style="color:var(--red)" id="fy-co2">—</div>
+        <div class="fy-unit">Mt CO₂ · FY cumulative</div>
+        <div class="fy-sub" id="fy-co2-sub">—</div>
+      </div>
+      <div class="fy-item">
+        <div class="fy-label">Avoided by RE</div>
+        <div class="fy-value" style="color:var(--green)" id="fy-avoided">—</div>
+        <div class="fy-unit">Mt CO₂ · Solar + Wind</div>
+        <div class="fy-sub" id="fy-avoided-sub">—</div>
+      </div>
+      <div class="fy-item">
+        <div class="fy-label">Avg grid EF</div>
+        <div class="fy-value" style="color:var(--amber)" id="fy-ef">—</div>
+        <div class="fy-unit">tCO₂/MWh · FY average</div>
+        <div class="fy-sub">CEA FY23-24 baseline: 0.727</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div>
+    <div class="sec-label">Today at a glance</div>
+    <div class="kpi-row">
+      <div class="kpi red">
+        <div class="kpi-label">Total CO₂ emitted</div>
+        <div class="kpi-value" id="kpi-co2">—</div>
+        <div class="kpi-unit">Mt CO₂ · derived</div>
+        <div class="kpi-sub" id="kpi-co2-sub">—</div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-label">Grid emission factor</div>
+        <div class="kpi-value" id="kpi-ef">—</div>
+        <div class="kpi-unit">tCO₂ / MWh · daily avg</div>
+        <div class="kpi-sub">CEA baseline: 0.716 tCO₂/MWh</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Emissions avoided by RE</div>
+        <div class="kpi-value" id="kpi-avoided">—</div>
+        <div class="kpi-unit">Mt CO₂ · Solar + Wind</div>
+        <div class="kpi-sub" id="kpi-avoided-sub">—</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-label">RE share in grid</div>
+        <div class="kpi-value" id="kpi-re">—</div>
+        <div class="kpi-unit">Solar + Wind + Hydro</div>
+        <div class="kpi-sub" id="kpi-re-sub">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CHARTS -->
+  <div class="two-col">
+
+    <!-- Intraday chart -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Intraday generation & carbon EF</div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'mix')">Mix</div>
+          <div class="tab" onclick="switchTab(this,'ef')">EF</div>
+          <div class="tab" onclick="switchTab(this,'demand')">Demand</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+        <div class="legend" id="mainLegend"></div>
+      </div>
+    </div>
+
+    <!-- Gen mix + derivation -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Daily generation mix</div>
+        <div class="card-meta">MU · NLDC SCADA</div>
+      </div>
+      <div class="card-body">
+        <div class="mix-list" id="mixList"></div>
+
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">CO₂ derivation</div>
+          <div class="deriv-row">
+            <div><div class="deriv-key">Thermal CO₂</div><div class="deriv-formula">thermal MU × 1000 × 0.95</div></div>
+            <div class="deriv-val" style="color:var(--red)" id="d-thermal">—</div>
+          </div>
+          <div class="deriv-row">
+            <div><div class="deriv-key">Gas CO₂</div><div class="deriv-formula">gas MU × 1000 × 0.45</div></div>
+            <div class="deriv-val" style="color:var(--amber)" id="d-gas">—</div>
+          </div>
+          <div class="deriv-row">
+            <div><div class="deriv-key">Total CO₂</div><div class="deriv-formula">thermal + gas</div></div>
+            <div class="deriv-val" style="color:var(--red);font-size:14px" id="d-total">—</div>
+          </div>
+          <div class="deriv-row">
+            <div><div class="deriv-key">Grid EF</div><div class="deriv-formula">total CO₂ ÷ total gen (MWh)</div></div>
+            <div class="deriv-val" style="color:var(--amber)" id="d-ef">—</div>
+          </div>
+          <div class="deriv-row">
+            <div><div class="deriv-key">Avoided (RE)</div><div class="deriv-formula">(solar+wind) × 1000 × 0.95</div></div>
+            <div class="deriv-val" style="color:var(--green)" id="d-avoided">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="three-col">
+
+    <!-- Regional carbon mix -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Regional carbon mix</div>
+        <div class="card-meta">Section G · NLDC MOP-E</div>
+      </div>
+      <div class="card-body">
+        <div id="rswList"></div>
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+          <div class="legend" style="margin:0">
+            <div class="leg"><div class="leg-sq" style="background:#5a3528"></div>Coal+Lignite</div>
+            <div class="leg"><div class="leg-sq" style="background:#9a6020"></div>Gas</div>
+            <div class="leg"><div class="leg-sq" style="background:#2255a4"></div>RES</div>
+            <div class="leg"><div class="leg-sq" style="background:#1d7a9a"></div>Hydro</div>
+            <div class="leg"><div class="leg-sq" style="background:#7a3a9a"></div>Nuclear</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EF trend + frequency -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Intraday EF · tCO₂/MWh</div>
+        <div class="card-meta" id="efMinMax">—</div>
+      </div>
+      <div class="card-body">
+        <div class="chart-sm"><canvas id="efChart"></canvas></div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">Frequency profile · All India</div>
+          <div class="freq-band" id="freqBands"></div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:9px;color:var(--ink3)">FVI: <span id="fvi" style="color:var(--ink)">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generation quality scorecard -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Today's grid quality</div>
+        <div class="card-meta">vs FY avg · NLDC</div>
+      </div>
+      <div class="card-body">
+        <div class="qs-grid">
+          <div class="qs-item">
+            <div class="qs-label">RE % today</div>
+            <div class="qs-val" id="qs-re" style="color:var(--green)">—</div>
+            <div class="qs-note" id="qs-re-note">—</div>
+          </div>
+          <div class="qs-item">
+            <div class="qs-label">EF today</div>
+            <div class="qs-val" id="qs-ef" style="color:var(--amber)">—</div>
+            <div class="qs-note" id="qs-ef-note">—</div>
+          </div>
+          <div class="qs-item">
+            <div class="qs-label">Clean hours</div>
+            <div class="qs-val" id="qs-clean" style="color:var(--blue)">—</div>
+            <div class="qs-note">EF below 0.60</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">Best & worst hour</div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--ink2)">Cleanest (lowest EF)</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--green)" id="qs-best">—</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--ink2)">Dirtiest (highest EF)</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--red)" id="qs-worst">—</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--ink2)">Peak demand</div>
+            <div style="font-family:var(--mono);font-size:11px" id="peak-demand">—</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0">
+            <div style="font-size:10px;color:var(--ink2)">Peak solar</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--amber)" id="peak-solar">—</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;background:#f0f7f3;border:1px solid #b8dfc8;border-radius:2px;padding:10px 12px">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--green);margin-bottom:3px">Total avoided today</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--green)" id="qs-avoided">—</div>
+          <div style="font-size:9px;color:#4a8c62;margin-top:2px" id="qs-avoided-note">—</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TREND CHART -->
+  <div>
+    <div class="card-head" style="background:var(--s);border:1px solid var(--border);border-radius:3px 3px 0 0">
+      <div class="card-title">Daily CO₂ trend · FY 2026-27</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--ink3)" id="trend-range">—</div>
+        <button onclick="downloadCSV()" style="font-family:var(--mono);font-size:9px;padding:3px 10px;border:1px solid var(--border);background:var(--s2);border-radius:2px;cursor:pointer;color:var(--ink2)">↓ Download CSV</button>
+      </div>
+    </div>
+    <div style="background:var(--s);border:1px solid var(--border);border-top:none;border-radius:0 0 3px 3px;padding:14px 16px">
+      <div style="position:relative;height:160px"><canvas id="trendChart"></canvas></div>
+      <div class="legend" style="margin-top:8px">
+        <div class="leg"><div class="leg-sq" style="background:var(--red)"></div>Daily CO₂ (kt)</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--green)"></div>Avoided (kt)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- METHOD NOTE -->
+  <div class="method">
+    <strong>Methodology</strong> · Daily CO₂ is <strong>derived</strong> from NLDC SCADA 15-min generation data, not directly measured.
+    Thermal CO₂ = Thermal (MU) × 950 tCO₂/GWh (CEA coal EF 2023-24). Gas CO₂ = Gas (MU) × 450 tCO₂/GWh (IPCC).
+    Avoided emissions = (Solar + Wind) × 950 tCO₂/GWh vs coal displacement baseline.
+    Grid EF = Total CO₂ ÷ Total generation (MWh). Rooftop / distributed RE (~227 GW installed) excluded per CEA DGR scope.
+    Sources: <strong>NLDC PSP · Grid-India</strong> · CEA CO₂ Baseline Database 2023-24.
+  </div>
+
+</main>
+
+<div class="rigveda">
+  नो चिन्नो वायुः अमृतं वि दस्येत् <span>— Ṛgveda</span>
+</div>
+
+<footer class="footer">
+  <div>IGCT · <span id="footerDate">—</span> · Data: Grid-India NLDC PSP</div>
+  <div style="display:flex;gap:16px;align-items:center">
+    <a href="https://grid-india.in" target="_blank">grid-india.in</a>
+    <a href="https://cea.nic.in" target="_blank">cea.nic.in</a>
+    <span class="credit">Created by <strong style="color:var(--ink2)">Sanket</strong></span>
+  </div>
+</footer>
+
+<script>
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.color = '#9a9690';
+
+const COLORS = {
+  thermal:'#5a3528', solar:'#c07820', wind:'#2255a4',
+  hydro:'#1d7a9a', nuclear:'#7a3a9a', gas:'#9a6020',
+  storage:'#4a6a5a', ef:'#c07820', demand:'#c84b2f'
+};
+const REGION_NAMES = {NR:'Northern',WR:'Western',SR:'Southern',ER:'Eastern',NER:'North-East',Total:'All India'};
+
+let D = null;
+let mainChart = null, efChart = null, currentTab = 'mix';
+
+// ── Load data ────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const r = await fetch('data.json?t=' + Date.now());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const text = await r.text();
+    try {
+      D = JSON.parse(text);
+    } catch(parseErr) {
+      throw new Error('JSON parse error: ' + parseErr.message);
+    }
+    try {
+      render();
+    } catch(renderErr) {
+      console.error('Render error:', renderErr);
+      document.querySelector('.page').innerHTML =
+        '<div style="padding:40px;font-family:var(--mono);font-size:11px;color:var(--red)">'+
+        'Render error: ' + renderErr.message + '</div>';
+    }
+  } catch(e) {
+    document.querySelector('.page').innerHTML =
+      '<div style="padding:40px;font-family:var(--mono);font-size:11px;color:var(--red)">'+
+      'Error: ' + e.message + '<br><br>'+
+      'Make sure data.json is in the same folder as index.html</div>';
+  }
+}
+
+// ── Render all ───────────────────────────────────────────────────────────────
+function render() {
+  const s = D.summary;
+  const m = D.meta;
+
+  // Header
+  document.getElementById('dateChip').textContent = m.report_date_display + ' · NLDC PSP';
+  document.getElementById('footerDate').textContent = m.report_date_display;
+
+  // KPIs
+  document.getElementById('kpi-co2').textContent = (s.co2_total_kt/1000).toFixed(3);
+  document.getElementById('kpi-co2-sub').textContent =
+    `Thermal: ${(s.co2_thermal_kt/1000).toFixed(3)} Mt · Gas: ${(s.co2_gas_kt/1000).toFixed(4)} Mt`;
+  document.getElementById('kpi-ef').textContent = s.grid_ef.toFixed(3);
+  document.getElementById('kpi-avoided').textContent = (s.re_avoided_kt/1000).toFixed(3);
+  document.getElementById('kpi-avoided-sub').textContent =
+    `Solar: ${(s.solar_mu*0.95/1000).toFixed(3)} Mt · Wind: ${(s.wind_mu*0.95/1000).toFixed(3)} Mt`;
+  document.getElementById('kpi-re').textContent = s.re_share_pct.toFixed(1) + '%';
+  document.getElementById('kpi-re-sub').textContent =
+    `Clean (incl nuclear): ${s.clean_share_pct.toFixed(1)}%`;
+
+  // Derivation
+  document.getElementById('d-thermal').textContent = (s.co2_thermal_kt/1000).toFixed(3) + ' Mt';
+  document.getElementById('d-gas').textContent = (s.co2_gas_kt/1000).toFixed(4) + ' Mt';
+  document.getElementById('d-total').textContent = (s.co2_total_kt/1000).toFixed(3) + ' Mt';
+  document.getElementById('d-ef').textContent = s.grid_ef.toFixed(4) + ' tCO₂/MWh';
+  document.getElementById('d-avoided').textContent = '−' + (s.re_avoided_kt/1000).toFixed(3) + ' Mt';
+
+  // Mix bars
+  const mixData = [
+    {k:'thermal', label:'Thermal', mu:s.thermal_mu, color:COLORS.thermal},
+    {k:'solar',   label:'Solar',   mu:s.solar_mu,   color:COLORS.solar},
+    {k:'wind',    label:'Wind',    mu:s.wind_mu,     color:COLORS.wind},
+    {k:'hydro',   label:'Hydro',   mu:s.hydro_mu,   color:COLORS.hydro},
+    {k:'nuclear', label:'Nuclear', mu:s.nuclear_mu,  color:COLORS.nuclear},
+    {k:'gas',     label:'Gas',     mu:s.gas_mu,      color:COLORS.gas},
+  ];
+  const maxMU = s.thermal_mu;
+  const ml = document.getElementById('mixList');
+  ml.innerHTML = '';
+  mixData.forEach(d => {
+    const pct = (d.mu / s.total_gen_mu * 100).toFixed(1);
+    ml.innerHTML += `<div class="mix-item">
+      <div class="mix-name">${d.label}</div>
+      <div class="mix-track"><div class="mix-fill" style="width:${(d.mu/maxMU*100).toFixed(1)}%;background:${d.color}"></div></div>
+      <div class="mix-mu" style="color:${d.color}">${Math.round(d.mu)}</div>
+      <div class="mix-pct">${pct}%</div>
+    </div>`;
+  });
+
+  // Avoided panel
+  // avoided emissions now in quality scorecard
+  document.getElementById('peak-demand').textContent = (s.peak_demand_mw/1000).toFixed(1) + ' GW';
+  document.getElementById('peak-solar').textContent = (s.peak_solar_mw/1000).toFixed(1) + ' GW peak';
+
+  // Regional carbon mix (Section G sourcewise)
+  renderRegionalCarbonMix();
+
+  // Frequency
+  const fp = D.freq_profile;
+  const freqBands = [
+    {label:'Normal band', val:fp.normal||0, color:'var(--green)'},
+    {label:'> 50.05 Hz',  val:fp.above_50_05||0, color:'var(--amber)'},
+    {label:'< 49.9 Hz',   val:fp.below_49_9||0, color:'var(--red)'},
+  ];
+  const fb = document.getElementById('freqBands');
+  fb.innerHTML = '';
+  freqBands.forEach(b => {
+    fb.innerHTML += `<div class="fb-row">
+      <div class="fb-label">${b.label}</div>
+      <div class="fb-track"><div class="fb-fill" style="width:${b.val}%;background:${b.color}"></div></div>
+      <div class="fb-val" style="color:${b.color}">${b.val.toFixed(1)}%</div>
+    </div>`;
+  });
+  document.getElementById('fvi').textContent = (fp.fvi||0).toFixed(3);
+
+  // EF min/max
+  const efs = D.timeseries.map(r => r.ef);
+  const minEF = Math.min(...efs), maxEF = Math.max(...efs);
+  const minT  = D.timeseries[efs.indexOf(minEF)]?.t;
+  const maxT  = D.timeseries[efs.indexOf(maxEF)]?.t;
+  document.getElementById('efMinMax').textContent =
+    `Min ${minEF.toFixed(3)} @ ${minT} · Max ${maxEF.toFixed(3)} @ ${maxT}`;
+
+  // Charts
+  buildMainChart('mix');
+  buildEfChart();
+  if (D.history && D.history.length > 0) renderFYBanner(D.history);
+  renderQualityScorecard();
+  initNDCCountdown();
+}
+
+// ── Chart builders ────────────────────────────────────────────────────────────
+const tickLabels = (arr) => arr.map((r,i) => i%4===0 ? r.t : '');
+const chartOpts = (extra={}) => ({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}, tooltip:{
+    backgroundColor:'#1a1916', titleColor:'#9a9690', bodyColor:'#edeae3',
+    borderColor:'#d4d0c8', borderWidth:1, padding:8,
+    font:{family:"'DM Mono', monospace"}
+  }},
+  scales:{
+    x:{grid:{color:'#e4e0d8'}, border:{color:'#d4d0c8'},
+       ticks:{font:{size:8}, maxRotation:0, maxTicksLimit:12}},
+    y:{grid:{color:'#e4e0d8'}, border:{color:'#d4d0c8'},
+       ticks:{font:{size:8}}}
+  },
+  ...extra
+});
+
+function buildMainChart(mode) {
+  if (mainChart) mainChart.destroy();
+  const ts = D.timeseries;
+  const labels = tickLabels(ts);
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  let cfg;
+
+  if (mode === 'mix') {
+    cfg = {type:'bar', data:{labels, datasets:[
+      {label:'Thermal', data:ts.map(r=>r.thermal), backgroundColor:'rgba(90,53,40,0.82)', stack:'s'},
+      {label:'Solar',   data:ts.map(r=>r.solar),   backgroundColor:'rgba(192,120,32,0.85)', stack:'s'},
+      {label:'Wind',    data:ts.map(r=>r.wind),     backgroundColor:'rgba(34,85,164,0.82)', stack:'s'},
+      {label:'Hydro',   data:ts.map(r=>r.hydro),    backgroundColor:'rgba(29,122,154,0.82)', stack:'s'},
+      {label:'Nuclear', data:ts.map(r=>r.nuclear),  backgroundColor:'rgba(122,58,154,0.75)', stack:'s'},
+      {label:'Gas',     data:ts.map(r=>r.gas),      backgroundColor:'rgba(154,96,32,0.75)', stack:'s'},
+      {label:'Storage', data:ts.map(r=>r.storage),  backgroundColor:'rgba(74,106,90,0.7)', stack:'s'},
+    ]}, options:chartOpts({
+      scales:{
+        x:{...chartOpts().scales.x, stacked:true},
+        y:{...chartOpts().scales.y, stacked:true,
+           title:{display:true,text:'GW',color:'#9a9690',font:{size:8}}}
+      }
+    })};
+    document.getElementById('mainLegend').innerHTML =
+      ['Thermal','Solar','Wind','Hydro','Nuclear','Gas','Storage'].map((l,i)=>
+        `<div class="leg"><div class="leg-sq" style="background:${Object.values(COLORS)[i]}"></div>${l}</div>`
+      ).join('');
+  } else if (mode === 'ef') {
+    cfg = {type:'line', data:{labels, datasets:[
+      {label:'EF (tCO₂/MWh)', data:ts.map(r=>r.ef),
+       borderColor:COLORS.ef, backgroundColor:'rgba(192,120,32,0.08)',
+       borderWidth:1.5, fill:true, tension:0.35, pointRadius:0},
+      {label:'CEA baseline', data:Array(ts.length).fill(0.716),
+       borderColor:'#d4d0c8', borderWidth:1, borderDash:[4,4], fill:false, pointRadius:0},
+    ]}, options:chartOpts({
+      scales:{x:chartOpts().scales.x,
+        y:{...chartOpts().scales.y, suggestedMin:0.45, suggestedMax:0.80,
+           title:{display:true,text:'tCO₂/MWh',color:'#9a9690',font:{size:8}}}}
+    })};
+    document.getElementById('mainLegend').innerHTML =
+      `<div class="leg"><div class="leg-sq" style="background:${COLORS.ef}"></div>Grid EF</div>
+       <div class="leg"><div class="leg-sq" style="background:#d4d0c8"></div>CEA baseline 0.716</div>`;
+  } else {
+    cfg = {type:'line', data:{labels, datasets:[
+      {label:'Demand',    data:ts.map(r=>r.demand),
+       borderColor:COLORS.demand, backgroundColor:'rgba(200,75,47,0.06)',
+       borderWidth:1.5, fill:true, tension:0.3, pointRadius:0},
+      {label:'Total gen', data:ts.map(r=>r.total),
+       borderColor:'#9a9690', borderWidth:1, borderDash:[3,3], fill:false, pointRadius:0},
+    ]}, options:chartOpts({
+      scales:{x:chartOpts().scales.x,
+        y:{...chartOpts().scales.y,
+           title:{display:true,text:'GW',color:'#9a9690',font:{size:8}}}}
+    })};
+    document.getElementById('mainLegend').innerHTML =
+      `<div class="leg"><div class="leg-sq" style="background:${COLORS.demand}"></div>Demand</div>
+       <div class="leg"><div class="leg-sq" style="background:#9a9690"></div>Total gen</div>`;
+  }
+  mainChart = new Chart(ctx, cfg);
+}
+
+function buildEfChart() {
+  if (efChart) efChart.destroy();
+  const ts = D.timeseries;
+  const labels = tickLabels(ts);
+  const ctx = document.getElementById('efChart').getContext('2d');
+  efChart = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets:[
+      {data:ts.map(r=>r.ef), borderColor:COLORS.ef,
+       backgroundColor:'rgba(192,120,32,0.07)', borderWidth:1.5,
+       fill:true, tension:0.35, pointRadius:0}
+    ]},
+    options:chartOpts({
+      scales:{x:chartOpts().scales.x,
+        y:{...chartOpts().scales.y, suggestedMin:0.45, suggestedMax:0.80,
+           title:{display:true,text:'tCO₂/MWh',color:'#9a9690',font:{size:8}}}}
+    })
+  });
+}
+
+function switchTab(el, mode) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab = mode;
+  buildMainChart(mode);
+}
+
+// ── Regional Carbon Mix (Section G) ──────────────────────────────────────
+function renderRegionalCarbonMix() {
+  const sw = D.regions_sourcewise;
+  if (!sw || Object.keys(sw).length === 0) {
+    document.getElementById('rswList').innerHTML =
+      '<div style="font-family:var(--mono);font-size:10px;color:var(--ink3)">No sourcewise data — re-run process.py</div>';
+    return;
+  }
+
+  const regionOrder = ['NR','WR','SR','ER','NER','All India'];
+  const FULL = {NR:'Northern',WR:'Western',SR:'Southern',ER:'Eastern',NER:'North-East','All India':'All India'};
+
+  // EF colour: green <0.55, amber 0.55–0.72, red >0.72
+  const efColor = ef => ef < 0.55 ? 'var(--green)' : ef < 0.72 ? 'var(--amber)' : 'var(--red)';
+
+  const el = document.getElementById('rswList');
+  el.innerHTML = '';
+
+  regionOrder.forEach(rk => {
+    const d = sw[rk];
+    if (!d || !d.total_mu) return;
+
+    const total = d.total_mu;
+    const coal  = ((d.coal_mu||0) + (d.lignite_mu||0)) / total * 100;
+    const gas   = (d.gas_mu||0)   / total * 100;
+    const res   = (d.res_mu||0)   / total * 100;
+    const hydro = (d.hydro_mu||0) / total * 100;
+    const nuke  = (d.nuclear_mu||0) / total * 100;
+    const ef    = d.implied_ef || 0;
+    const isAll = rk === 'All India';
+
+    el.innerHTML += `
+    <div class="rsw-region" ${isAll ? 'style="border-top:1px solid var(--border);padding-top:11px;margin-top:4px"' : ''}>
+      <div class="rsw-head">
+        <div class="rsw-name" ${isAll ? 'style="font-weight:600;color:var(--ink)"' : ''}>
+          ${FULL[rk]}
+          <span style="font-family:var(--mono);font-size:8px;color:var(--ink3);margin-left:4px">${total.toFixed(0)} MU</span>
+        </div>
+        <div class="rsw-ef" style="color:${efColor(ef)}">
+          ${ef.toFixed(3)} <span style="font-size:8px;color:var(--ink3)">tCO₂/MWh</span>
+        </div>
+      </div>
+      <div class="rsw-stack">
+        <div class="rsw-seg" style="width:${coal.toFixed(1)}%;background:#5a3528" title="Coal+Lignite ${coal.toFixed(1)}%"></div>
+        <div class="rsw-seg" style="width:${gas.toFixed(1)}%;background:#9a6020" title="Gas ${gas.toFixed(1)}%"></div>
+        <div class="rsw-seg" style="width:${res.toFixed(1)}%;background:#2255a4" title="RES ${res.toFixed(1)}%"></div>
+        <div class="rsw-seg" style="width:${hydro.toFixed(1)}%;background:#1d7a9a" title="Hydro ${hydro.toFixed(1)}%"></div>
+        <div class="rsw-seg" style="width:${nuke.toFixed(1)}%;background:#7a3a9a" title="Nuclear ${nuke.toFixed(1)}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:3px">
+        <span style="font-family:var(--mono);font-size:8px;color:#5a3528">${coal.toFixed(0)}% fossil</span>
+        <span style="font-family:var(--mono);font-size:8px;color:#2255a4">${(res+hydro+nuke).toFixed(0)}% clean</span>
+      </div>
+    </div>`;
+  });
+}
+
+// ── Quality Scorecard ────────────────────────────────────────────────────
+function renderQualityScorecard() {
+  const s  = D.summary;
+  const ts = D.timeseries;
+  const h  = D.history || [];
+
+  // FY averages
+  const fyAvgRE = h.length ? h.reduce((a,d)=>a+(d.re_pct||0),0)/h.length : 0;
+  const fyAvgEF = h.length ? h.reduce((a,d)=>a+(d.ef||0),0)/h.length : 0;
+
+  // Clean hours (EF < 0.60)
+  const cleanSlots = ts.filter(r => r.ef > 0 && r.ef < 0.60).length;
+  const cleanHours = (cleanSlots * 0.25).toFixed(1);
+
+  // Best / worst EF time
+  const validTS = ts.filter(r => r.ef > 0.3 && r.ef < 1.2);
+  const bestRow  = validTS.reduce((a,b) => a.ef < b.ef ? a : b, validTS[0] || {ef:0,t:'—'});
+  const worstRow = validTS.reduce((a,b) => a.ef > b.ef ? a : b, validTS[0] || {ef:0,t:'—'});
+
+  const reToday = s.re_share_pct;
+  const efToday = s.grid_ef;
+  const reDiff  = (reToday - fyAvgRE).toFixed(1);
+  const efDiff  = (efToday - fyAvgEF).toFixed(4);
+
+  document.getElementById('qs-re').textContent   = reToday.toFixed(1) + '%';
+  document.getElementById('qs-re-note').textContent = `vs FY avg ${fyAvgRE.toFixed(1)}% (${reDiff>0?'+':''}${reDiff}pp)`;
+  document.getElementById('qs-ef').textContent   = efToday.toFixed(3);
+  document.getElementById('qs-ef-note').textContent = `vs FY avg ${fyAvgEF.toFixed(3)} (${efDiff>0?'+':''}${efDiff})`;
+  document.getElementById('qs-clean').textContent = cleanHours + 'h';
+  document.getElementById('qs-best').textContent  = `${bestRow.t} · ${bestRow.ef?.toFixed(3)} tCO₂/MWh`;
+  document.getElementById('qs-worst').textContent = `${worstRow.t} · ${worstRow.ef?.toFixed(3)} tCO₂/MWh`;
+
+  // Avoided in Mt
+  const avoided = s.re_avoided_kt / 1000;
+  document.getElementById('qs-avoided').textContent = avoided.toFixed(3) + ' Mt CO₂';
+  document.getElementById('qs-avoided-note').textContent =
+    `Solar ${(s.solar_mu*0.95/1000).toFixed(3)} + Wind ${(s.wind_mu*0.95/1000).toFixed(3)} Mt`;
+}
+
+// ── NDC Countdown ─────────────────────────────────────────────────────────
+function initNDCCountdown() {
+  // India NDC: reduce grid EF to 0.40 tCO₂/MWh by 31 December 2030
+  // Source: India's Updated NDC submitted to UNFCCC, August 2022
+  const NDC_TARGET_EF  = 0.40;
+  const NDC_DEADLINE   = new Date('2030-12-31T23:59:59Z');
+  const NDC_START_EF   = 0.716; // CEA FY 2022-23 baseline
+  const NDC_START_DATE = new Date('2023-04-01T00:00:00Z'); // FY 2023-24 start
+
+  const h = D.history || [];
+  const currentEF = h.length
+    ? h.reduce((s,d) => s + (d.ef||0), 0) / h.length
+    : D.summary.grid_ef;
+
+  const now = new Date();
+  const totalDays    = (NDC_DEADLINE - NDC_START_DATE) / 86400000;
+  const elapsedDays  = (now - NDC_START_DATE) / 86400000;
+  const progressPct  = Math.min(100, elapsedDays / totalDays * 100);
+
+  // Required EF at today's date on a linear trajectory from 0.716 to 0.40
+  const requiredEF = NDC_START_EF - (NDC_START_EF - NDC_TARGET_EF) * (elapsedDays / totalDays);
+  const efGap      = Math.max(0, currentEF - NDC_TARGET_EF);
+  const onTrack    = currentEF <= requiredEF;
+
+  // Required daily EF drop from today to deadline
+  const daysLeft       = Math.max(0, (NDC_DEADLINE - now) / 86400000);
+  const dailyDropNeeded = efGap / daysLeft;
+
+  // Bar colour: green if on track, amber if within 10% off, red if >10% off
+  const deviation = currentEF - requiredEF;
+  const barColor  = deviation <= 0 ? '#4a8c62' : deviation < 0.02 ? '#c07820' : '#c84b2f';
+
+  document.getElementById('ndcBar').style.width     = progressPct.toFixed(1) + '%';
+  document.getElementById('ndcBar').style.background = barColor;
+  document.getElementById('ndcEfGap').textContent   = efGap.toFixed(4) + ' tCO₂/MWh';
+  document.getElementById('ndcFyAvg').textContent   = currentEF.toFixed(4);
+  document.getElementById('ndcCurrentEF').textContent = currentEF.toFixed(4) + ' tCO₂/MWh';
+  document.getElementById('ndcDropRate').textContent  = (dailyDropNeeded * 1000).toFixed(4) + ' tCO₂/MWh per 1000 days';
+
+  const trackLabel = onTrack
+    ? '✓ Ahead of trajectory'
+    : `✗ ${deviation.toFixed(4)} above target path`;
+  document.getElementById('ndcTrack').textContent  = trackLabel;
+  document.getElementById('ndcTrack').style.color  = onTrack ? '#4a8c62' : '#c84b2f';
+  document.getElementById('ndcStatus').textContent =
+    `Target: 0.40 · Required now: ${requiredEF.toFixed(3)} · ${onTrack ? 'ON TRACK' : 'BEHIND'}`;
+
+  // Tick countdown every second
+  function tick() {
+    const now2 = new Date();
+    let diff = Math.max(0, NDC_DEADLINE - now2) / 1000;
+    const days = Math.floor(diff / 86400);       diff -= days * 86400;
+    const hrs  = Math.floor(diff / 3600);        diff -= hrs * 3600;
+    const mins = Math.floor(diff / 60);          diff -= mins * 60;
+    const secs = Math.floor(diff);
+    const pad  = (n, w=2) => String(n).padStart(w, '0');
+    document.getElementById('ndcDisplay').textContent =
+      `${pad(days,4)} : ${pad(hrs)} : ${pad(mins)} : ${pad(secs)}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── FY Progress Banner ────────────────────────────────────────────────────
+function renderFYBanner(history) {
+  if (!history || history.length === 0) return;
+
+  const totalCO2   = history.reduce((s,d) => s + (d.co2_kt||0), 0);
+  const totalAvoid = history.reduce((s,d) => s + (d.avoided_kt||0), 0);
+  const avgEF      = history.reduce((s,d) => s + (d.ef||0), 0) / history.length;
+  const days       = history.length;
+
+  const apr = history.filter(d => d.date && d.date.includes('-04-'));
+  const may = history.filter(d => d.date && d.date.includes('-05-'));
+  const jun = history.filter(d => d.date && d.date.includes('-06-'));
+
+  // Build month breakdown string dynamically
+  const monthParts = [];
+  if (apr.length) monthParts.push(`Apr: ${(apr.reduce((s,d)=>s+(d.co2_kt||0),0)/1000).toFixed(1)} Mt`);
+  if (may.length) monthParts.push(`May: ${(may.reduce((s,d)=>s+(d.co2_kt||0),0)/1000).toFixed(1)} Mt`);
+  if (jun.length) monthParts.push(`Jun: ${(jun.reduce((s,d)=>s+(d.co2_kt||0),0)/1000).toFixed(1)} Mt`);
+
+  const first = history[0]?.date_disp || '';
+  const last  = history[history.length-1]?.date_disp || '';
+
+  document.getElementById('fy-days').textContent      = days;
+  document.getElementById('fy-days-sub').textContent  = `${first} → ${last}`;
+  document.getElementById('fy-co2').textContent       = (totalCO2/1000).toFixed(2);
+  document.getElementById('fy-co2-sub').textContent   = monthParts.join(' · ');
+  document.getElementById('fy-avoided').textContent   = (totalAvoid/1000).toFixed(2);
+  document.getElementById('fy-avoided-sub').textContent = `${((totalAvoid/totalCO2)*100).toFixed(1)}% of gross emissions`;
+  document.getElementById('fy-ef').textContent        = avgEF.toFixed(4);
+
+  // Trend chart
+  const tLabels = history.map((d,i) => {
+    const dt = new Date(d.date);
+    return dt.getDate() === 1 || i === 0 ? d.date_disp : '';
+  });
+
+  const first2 = history[0]?.date_disp || '';
+  const last2  = history[history.length-1]?.date_disp || '';
+  document.getElementById('trend-range').textContent = `${first2} → ${last2}`;
+
+  if (window._trendChart) window._trendChart.destroy();
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  window._trendChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: tLabels,
+      datasets: [
+        { label:'CO₂ (kt)', data: history.map(d=>d.co2_kt),
+          backgroundColor: history.map((_,i)=> i===history.length-1 ? 'rgba(200,75,47,0.9)' : 'rgba(200,75,47,0.45)'),
+          borderRadius: 1, order: 2 },
+        { label:'Avoided (kt)', data: history.map(d=>d.avoided_kt),
+          type:'line', borderColor:'rgba(45,122,79,0.7)', backgroundColor:'transparent',
+          borderWidth:1.5, pointRadius:0, tension:0.3, order:1 }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{
+        backgroundColor:'#1a1916', titleColor:'#9a9690', bodyColor:'#edeae3',
+        borderColor:'#d4d0c8', borderWidth:1, padding:8,
+        callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en-IN')} kt` }
+      }},
+      scales:{
+        x:{ grid:{display:false}, border:{color:'#d4d0c8'},
+            ticks:{font:{size:8,family:"'DM Mono',monospace"}, color:'#9a9690', maxRotation:0} },
+        y:{ grid:{color:'#e4e0d8'}, border:{color:'#d4d0c8'},
+            ticks:{font:{size:8,family:"'DM Mono',monospace"}, color:'#9a9690'},
+            title:{display:true,text:'kt CO₂',color:'#9a9690',font:{size:8}} }
+      }
+    }
+  });
+}
+
+// ── CSV Download ──────────────────────────────────────────────────────────
+function downloadCSV() {
+  if (!D || !D.history) return;
+  const headers = ['Date','CO2_kt','Grid_EF_tCO2_MWh','Avoided_kt','RE_pct','Total_gen_MU','Solar_MU','Wind_MU','Peak_MW'];
+  const rows = D.history.map(d => [
+    d.date, d.co2_kt, d.ef, d.avoided_kt, d.re_pct, d.total_mu, d.solar_mu, d.wind_mu, d.peak_mw
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'india_grid_carbon_FY2026-27.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+loadData();
+</script>
+</body>
+</html>
