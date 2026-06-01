@@ -3,7 +3,7 @@
     "report_date": "2026-05-31",
     "report_date_display": "31 May 2026",
     "source_file": "31.05.26_NLDC_PSP_974.xls",
-    "processed_at": "2026-06-01T12:24:21",
+    "processed_at": "2026-06-01T13:23:29",
     "ef_coal": 0.95,
     "ef_gas": 0.45,
     "ef_source": "CEA CO2 Baseline Database 2023-24",
@@ -1860,6 +1860,18 @@
       "solar_mu": 640.8,
       "wind_mu": 288.84,
       "peak_mw": 241058.0
+    },
+    {
+      "date": "2026-04-30",
+      "date_disp": "30 Apr 2026",
+      "co2_kt": 3387.7,
+      "ef": 0.662,
+      "avoided_kt": 908.0,
+      "re_pct": 25.48,
+      "total_mu": 5117.65,
+      "solar_mu": 633.3,
+      "wind_mu": 322.53,
+      "peak_mw": 233524.0
     },
     {
       "date": "2026-05-01",
